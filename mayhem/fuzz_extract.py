@@ -24,20 +24,19 @@ bogus_pcap_file = open('in.pcap', 'wb+')
 bogus_pcap_file.close()
 
 
+with disabledrun():
+    extractor = Extractor(nofile=True)
+
 @atheris.instrument_func
 def TestOneInput(data):
     # Too slow using expected on-disk file, so monkey-patch to allow using io.BytesIO for same functionality
     # Constructor calls run(), so we need to disable it
-    with disabledrun():
-        extractor = Extractor(nofile=True)
     try:
-        if not extractor:
-            return -1
         pcap_file = io.BytesIO(data)
         pcap_file.name = 'foo.pcap'
         extractor._ifile = pcap_file
         extractor.run()
-    except pcapkit.BaseError:
+    except (pcapkit.BaseError, AttributeError):
         return -1
 
 
