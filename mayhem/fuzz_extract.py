@@ -1,22 +1,42 @@
 #!/usr/bin/env python3
 import atheris
-import tempfile
+import io
 import logging
 import sys
-
-logging.disable(logging.ERROR)
+from contextlib import contextmanager
 
 with atheris.instrument_imports():
     import pcapkit
+    from pcapkit.foundation.extraction import Extractor
+
+logging.disable(logging.ERROR)
+
+
+@contextmanager
+def disabledrun():
+    save_run = pcapkit.foundation.extraction.Extractor.run
+    pcapkit.foundation.extraction.Extractor.run = lambda self: None
+    yield
+    pcapkit.foundation.extraction.Extractor.run = save_run
+
+
+bogus_pcap_file = open('in.pcap', 'wb+')
+bogus_pcap_file.close()
 
 
 @atheris.instrument_func
 def TestOneInput(data):
+    # Too slow using expected on-disk file, so monkey-patch to allow using io.BytesIO for same functionality
+    # Constructor calls run(), so we need to disable it
+    with disabledrun():
+        extractor = Extractor(nofile=True)
     try:
-        with tempfile.NamedTemporaryFile('wb+', suffix='.pcap') as t_file:
-            t_file.write(data)
-            t_file.flush()
-            pcapkit.extract(fin=t_file.name, nofile=True)
+        if not extractor:
+            return -1
+        pcap_file = io.BytesIO(data)
+        pcap_file.name = 'foo.pcap'
+        extractor._ifile = pcap_file
+        extractor.run()
     except pcapkit.BaseError:
         return -1
 
@@ -27,4 +47,6 @@ def main():
 
 
 if __name__ == '__main__':
+    # Get bytes from testsuite file
     main()
+
