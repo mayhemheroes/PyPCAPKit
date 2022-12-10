@@ -5,7 +5,7 @@ import logging
 import sys
 from contextlib import contextmanager
 
-with atheris.instrument_imports():
+with atheris.instrument_imports(include=['pcapkit']):
     import pcapkit
     from pcapkit.foundation.extraction import Extractor
 
